@@ -9,35 +9,36 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = NectarPrimary,
+    onPrimary = Color.Black,
+    secondary = NectarSecondary,
+    background = Color(0xFF111315),
+    surface = Color(0xFF1B1E22),
+    onSurface = Color(0xFFE8EAED)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = NectarPrimary,
     onPrimary = Color.White,
+    primaryContainer = NectarPrimaryContainer,
+    secondary = NectarSecondary,
     onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    background = NectarBackground,
+    onBackground = NectarOnSurface,
+    surface = NectarSurface,
+    onSurface = NectarOnSurface,
+    surfaceVariant = Color(0xFFE3F2FD),
+    outline = Color(0xFFCFD8DC)
 )
 
 @Composable
 fun MeuAcessorTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
