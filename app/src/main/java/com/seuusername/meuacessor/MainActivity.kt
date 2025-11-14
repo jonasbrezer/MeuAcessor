@@ -1,8 +1,15 @@
 package com.seuusername.meuacessor
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -93,8 +100,20 @@ import com.seuusername.meuacessor.ui.theme.TasksAccent
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permissão concedida
+        } else {
+            // Permissão negada
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        createNotificationChannel()
         enableEdgeToEdge()
         setContent {
             MeuAcessorTheme {
@@ -169,6 +188,212 @@ private fun MeuAcessorApp() {
                     )
                 }
             }
+            HorizontalPager(state = pagerState) {
+                page ->
+                when (page) {
+                    0 -> FinanceAnalysisScreen()
+                    1 -> FinanceTransactionsScreen()
+                    2 -> FinanceMoreOptionsScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FinanceAnalysisScreen() {
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                SummaryCard("Saldo Atual", "R$ 19,48", Modifier.weight(1f))
+                SummaryCard("Guardado", "R$ 0,00", Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                SummaryCard("Despesas (Mês)", "R$ 2.967,09", Modifier.weight(1f))
+                SummaryCard("Pendentes", "R$ 0,00", Modifier.weight(1f))
+            }
+        }
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(4.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Análise Gráfica", style = MaterialTheme.typography.titleLarge)
+                    // Mock chart and category list
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(Color.LightGray.copy(alpha=0.3f)), contentAlignment = Alignment.Center) {
+                        Text("[Mock Gráfico Pizza]")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FinanceTransactionsScreen() {
+    var showDialog by remember { mutableStateOf(false) }
+    val transactions = remember {
+        listOf(
+            Transaction("Salário", 3500.0, "01/11/2025", "Receitas"),
+            Transaction("Almoço (iFood)", -35.50, "14/11/2025", "Alimentação"),
+            Transaction("Roupas", -20.00, "08/11/2025", "Compras"),
+            Transaction("Água e Luz", -126.07, "07/11/2025", "Casa")
+        )
+    }
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showDialog = true }) {
+                Icon(Icons.Rounded.Add, contentDescription = "Adicionar transação")
+            }
+        }
+    ) { padding ->
+        LazyColumn(modifier = Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(transactions.groupBy { it.date }.entries.toList()) { (date, transactionsOnDate) ->
+                Text(date, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
+                transactionsOnDate.forEach { transaction ->
+                    TransactionItem(transaction)
+                }
+            }
+        }
+    }
+    if (showDialog) {
+        NewTransactionDialog(onDismiss = { showDialog = false })
+    }
+}
+
+@Composable
+fun FinanceMoreOptionsScreen() {
+    Column(modifier = Modifier.padding(16.dp)) {
+        SettingsItem(icon = Icons.Rounded.Category, title = "Categorias e Caixinhas", subtitle = "Edite suas fontes de receita e despesa")
+        SettingsItem(icon = Icons.Rounded.RequestQuote, title = "Orçamentos", subtitle = "Defina limites de gastos mensais")
+    }
+}
+
+@Composable
+fun SettingsItem(icon: ImageVector, title: String, subtitle: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null)
+    }
+}
+
+
+@Composable
+fun SummaryCard(title: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier, elevation = CardDefaults.cardElevation(4.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+
+@Composable
+fun NewTransactionDialog(onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Nova Transação", style = MaterialTheme.typography.headlineSmall)
+                    IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, "Fechar") }
+                }
+                Text("O que você gostaria de registrar?", modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(24.dp))
+                
+                LazyVerticalGrid(columns = GridCells.Fixed(2), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    item { TransactionTypeButton(icon = Icons.Rounded.ArrowUpward, text = "Despesa", color = Color(0xFFF44336)) }
+                    item { TransactionTypeButton(icon = Icons.Rounded.ArrowDownward, text = "Receita", color = Color(0xFF4CAF50)) }
+                    item { TransactionTypeButton(icon = Icons.Rounded.Savings, text = "Guardar", color = Color(0xFF2196F3)) }
+                    item { TransactionTypeButton(icon = Icons.Rounded.Redeem, text = "Resgatar", color = Color(0xFFFF9800)) }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                OutlinedButton(onClick = { /*TODO*/ }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.Calculate, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ajustar Saldo")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionTypeButton(icon: ImageVector, text: String, color: Color, onClick: () -> Unit = {}) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 20.dp, horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = text, tint = color, modifier = Modifier.size(32.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(text, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+
+@Composable
+fun BalanceCard(balance: Double) {
+    Card(elevation = CardDefaults.cardElevation(4.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Text("Balanço do Mês", style = MaterialTheme.typography.titleMedium)
+            Text(String.format("R$ %.2f", balance), style = MaterialTheme.typography.displaySmall, color = if (balance >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
+        }
+    }
+}
+
+@Composable
+fun TransactionItem(transaction: Transaction) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        val icon = if (transaction.amount >= 0) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
+        Icon(icon, null, tint = if (transaction.amount >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(transaction.description)
+            Text(transaction.date, fontSize = 12.sp, color = Color.Gray)
+        }
+        Text(String.format("R$ %.2f", transaction.amount), color = if (transaction.amount >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface)
+    }
+    HorizontalDivider()
+}
+
+data class DiaryEntry(val date: String, val title: String, val content: String)
+
+@Composable
+private fun DiaryScreen(onMenuClick: () -> Unit) {
+    val entries = remember { listOf(
+        DiaryEntry("14/11/2025", "Dia triste", "Hoje me senti triste pois acordei achando que era sexta-feira, quando na verdade era quinta-feira..."),
+        DiaryEntry("13/11/2025", "Dia produtivo!", "Consegui finalizar a primeira versão da UI do app e estou muito feliz com o resultado. O design está limpo e moderno.")
+    ) }
+
+    Scaffold(topBar = { CompactTopBar(onMenuClick, false) }) { padding ->
+        LazyColumn(modifier = Modifier.padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            item { Text("Meu Diário", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 8.dp)) }
+            items(entries) { entry -> DiaryEntryItem(entry) }
         }
     }
 }
