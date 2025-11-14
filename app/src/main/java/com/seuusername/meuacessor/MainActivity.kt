@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,17 +42,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             MeuAcessorTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Surface(
+                    CalculatorScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
-                    ) {
-                        CalculatorScreen(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp)
-                        )
-                    }
+                    )
                 }
             }
         }
@@ -157,59 +154,129 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
         }
     }
 
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+        )
+    )
+
+    val helperText = when {
+        displayValue == "Erro" -> "Operação inválida"
+        firstOperand != null && pendingOperation != null && !shouldResetInput ->
+            "${formatResult(firstOperand!!)} $pendingOperation $displayValue"
+        firstOperand != null && pendingOperation != null ->
+            "${formatResult(firstOperand!!)} $pendingOperation"
+        else -> ""
+    }
+
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .background(gradient)
+            .padding(20.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
-                .padding(24.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = displayValue,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End,
-                style = MaterialTheme.typography.displaySmall.copy(fontSize = 40.sp),
-                fontWeight = FontWeight.Medium
+                text = "Calculadora",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Bold
             )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (helperText.isNotEmpty()) {
+                        Text(
+                            text = helperText,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Text(
+                        text = displayValue,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                        style = MaterialTheme.typography.displaySmall.copy(fontSize = 48.sp),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         val rows = listOf(
-            listOf("7", "8", "9", "÷"),
-            listOf("4", "5", "6", "×"),
-            listOf("1", "2", "3", "-"),
-            listOf("C", "0", ".", "+")
+            listOf("AC", "±", "%", "÷"),
+            listOf("7", "8", "9", "×"),
+            listOf("4", "5", "6", "-"),
+            listOf("1", "2", "3", "+"),
+            listOf("0", ".", "=")
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            rows.forEach { row ->
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            rows.dropLast(1).forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     row.forEach { symbol ->
                         val isOperation = symbol in listOf("÷", "×", "-", "+")
                         val buttonModifier = Modifier
                             .weight(1f)
-                            .height(64.dp)
+                            .height(68.dp)
 
                         CalculatorButton(
                             symbol = symbol,
                             modifier = buttonModifier,
-                            containerColor = if (isOperation) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.secondaryContainer
+                            containerColor = when {
+                                symbol == "AC" -> MaterialTheme.colorScheme.errorContainer
+                                isOperation -> MaterialTheme.colorScheme.primaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            contentColor = when {
+                                symbol == "AC" -> MaterialTheme.colorScheme.onErrorContainer
+                                isOperation -> MaterialTheme.colorScheme.onPrimaryContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         ) {
                             when (symbol) {
-                                "C" -> resetAll()
+                                "AC" -> resetAll()
                                 "." -> handleDecimal()
                                 "÷", "×", "-", "+" -> handleOperation(symbol)
+                                "±" -> if (displayValue != "Erro") {
+                                    val toggled = displayValue.toDoubleOrNull()?.times(-1)
+                                    if (toggled != null) {
+                                        setDisplayValue(formatResult(toggled))
+                                        setShouldResetInput(false)
+                                    }
+                                }
+                                "%" -> if (displayValue != "Erro") {
+                                    val percent = displayValue.toDoubleOrNull()?.div(100)
+                                    if (percent != null) {
+                                        setDisplayValue(formatResult(percent))
+                                        setShouldResetInput(false)
+                                    }
+                                }
+                                "=" -> handleEquals()
                                 else -> handleNumberInput(symbol)
                             }
                         }
@@ -219,14 +286,37 @@ fun CalculatorScreen(modifier: Modifier = Modifier) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                CalculatorButton(
+                    symbol = "0",
+                    modifier = Modifier
+                        .weight(2f)
+                        .height(68.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    handleNumberInput("0")
+                }
+
+                CalculatorButton(
+                    symbol = ".",
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(68.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    handleDecimal()
+                }
+
                 CalculatorButton(
                     symbol = "=",
                     modifier = Modifier
-                        .weight(4f)
-                        .height(64.dp),
-                    containerColor = MaterialTheme.colorScheme.primary
+                        .weight(1f)
+                        .height(68.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     handleEquals()
                 }
@@ -240,12 +330,18 @@ private fun CalculatorButton(
     symbol: String,
     modifier: Modifier = Modifier,
     containerColor: Color,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
     onClick: () -> Unit
 ) {
     Button(
         onClick = onClick,
         modifier = modifier,
-        colors = ButtonDefaults.buttonColors(containerColor = containerColor)
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
     ) {
         Text(
             text = symbol,
