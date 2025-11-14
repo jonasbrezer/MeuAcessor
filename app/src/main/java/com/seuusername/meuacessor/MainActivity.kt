@@ -156,6 +156,7 @@ private fun CompactTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
+                .statusBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -201,6 +202,7 @@ private fun NectarSidebar(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .safeDrawingPadding()
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -469,7 +471,7 @@ private fun ChatInputBar(
     onSendClick: () -> Unit,
     isLoading: Boolean
 ) {
-    Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 8.dp) {
+    Surface(modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding(), shadowElevation = 8.dp) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
