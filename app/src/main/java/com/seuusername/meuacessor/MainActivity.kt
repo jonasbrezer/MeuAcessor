@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -51,7 +52,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.seuusername.meuacessor.data.DEFAULT_GEMINI_MODEL
 import com.seuusername.meuacessor.data.GeminiModelService
+import com.seuusername.meuacessor.data.GeminiPreferences
+import com.seuusername.meuacessor.data.GeminiSettings
 import com.seuusername.meuacessor.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -341,10 +345,11 @@ data class ChatMessage(val content: String, val isFromAssistant: Boolean)
 @Composable
 private fun ChatScreen(onMenuClick: () -> Unit) {
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var apiKey by remember { mutableStateOf("") }
-    var selectedModel by remember { mutableStateOf(DEFAULT_GEMINI_MODEL) }
     val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val settings by GeminiPreferences.observeSettings(context).collectAsState(initial = GeminiSettings())
+    val resolvedModelName = settings.modelName.ifBlank { DEFAULT_GEMINI_MODEL }
 
     val messages = remember {
         mutableStateListOf(
@@ -355,13 +360,18 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
 
     if (showSettingsDialog) {
         SettingsDialog(
-            currentApiKey = apiKey,
-            currentModelName = selectedModel,
+            currentApiKey = settings.apiKey,
+            currentModelName = resolvedModelName,
             onDismiss = { showSettingsDialog = false },
             onSave = { newApiKey, newModel ->
-                apiKey = newApiKey
-                selectedModel = newModel.ifBlank { DEFAULT_GEMINI_MODEL }
-                showSettingsDialog = false
+                scope.launch {
+                    GeminiPreferences.saveSettings(
+                        context = context,
+                        apiKey = newApiKey.trim(),
+                        modelName = newModel.ifBlank { DEFAULT_GEMINI_MODEL }
+                    )
+                    showSettingsDialog = false
+                }
             }
         )
     }
@@ -391,15 +401,21 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
 
                         scope.launch {
                             try {
-                                if (apiKey.isBlank()) {
-                                    messages.add(ChatMessage("Por favor, insira sua chave de API do Gemini nas configurações.", isFromAssistant = true))
+                                val trimmedApiKey = settings.apiKey.trim()
+                                if (trimmedApiKey.isBlank()) {
+                                    messages.add(
+                                        ChatMessage(
+                                            "Por favor, insira sua chave de API do Gemini nas configurações.",
+                                            isFromAssistant = true
+                                        )
+                                    )
                                     isLoading = false
                                     return@launch
                                 }
 
-                                val modelName = selectedModel.ifBlank { DEFAULT_GEMINI_MODEL }
+                                val modelName = resolvedModelName
                                 val assistantReply = GeminiModelService.generateContent(
-                                    apiKey = apiKey.trim(),
+                                    apiKey = trimmedApiKey,
                                     modelName = modelName,
                                     userMessage = userMessage
                                 )

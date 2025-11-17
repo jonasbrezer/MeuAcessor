@@ -45,9 +45,10 @@ object GeminiModelService {
                 buildList {
                     for (index in 0 until modelsJson.length()) {
                         val modelName = modelsJson.optJSONObject(index)?.optString("name").orEmpty()
-                        if (modelName.isNotBlank()) add(modelName)
+                        val sanitizedName = modelName.removePrefix("models/")
+                        if (sanitizedName.isNotBlank()) add(sanitizedName)
                     }
-                }
+                }.sorted()
             } finally {
                 connection.disconnect()
             }
