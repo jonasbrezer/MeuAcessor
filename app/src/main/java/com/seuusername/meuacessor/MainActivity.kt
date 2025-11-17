@@ -391,7 +391,7 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
                                 }
 
                                 val generativeModel = GenerativeModel(
-                                    modelName = "gemini-1.0-pro",
+                                    modelName = "gemini-flash-latest",
                                     apiKey = apiKey
                                 )
 
@@ -410,7 +410,7 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
                 },
                 isLoading = isLoading
             )
-        }
+        },
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
