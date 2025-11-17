@@ -59,6 +59,8 @@ import com.seuusername.meuacessor.data.GeminiSettings
 import com.seuusername.meuacessor.ui.theme.*
 import kotlinx.coroutines.launch
 
+private const val DEFAULT_GEMINI_MODEL = "gemini-1.5-flash-latest"
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
