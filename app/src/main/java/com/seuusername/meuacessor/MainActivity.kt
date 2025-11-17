@@ -391,7 +391,7 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
                                 }
 
                                 val generativeModel = GenerativeModel(
-                                    modelName = "gemini-flash-latest",
+                                    modelName = "gemini-1.5-flash-latest",
                                     apiKey = apiKey
                                 )
 
