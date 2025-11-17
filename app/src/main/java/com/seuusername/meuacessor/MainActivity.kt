@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -49,7 +52,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.ai.client.generativeai.GenerativeModel
+import com.seuusername.meuacessor.data.DEFAULT_GEMINI_MODEL
+import com.seuusername.meuacessor.data.GeminiModelService
+import com.seuusername.meuacessor.data.GeminiPreferences
+import com.seuusername.meuacessor.data.GeminiSettings
 import com.seuusername.meuacessor.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -337,9 +343,11 @@ data class ChatMessage(val content: String, val isFromAssistant: Boolean)
 @Composable
 private fun ChatScreen(onMenuClick: () -> Unit) {
     var showSettingsDialog by remember { mutableStateOf(false) }
-    var apiKey by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val settings by GeminiPreferences.observeSettings(context).collectAsState(initial = GeminiSettings())
+    val resolvedModelName = settings.modelName.ifBlank { DEFAULT_GEMINI_MODEL }
 
     val messages = remember {
         mutableStateListOf(
@@ -350,11 +358,18 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
 
     if (showSettingsDialog) {
         SettingsDialog(
-            currentApiKey = apiKey,
+            currentApiKey = settings.apiKey,
+            currentModelName = resolvedModelName,
             onDismiss = { showSettingsDialog = false },
-            onSave = { newApiKey ->
-                apiKey = newApiKey
-                showSettingsDialog = false
+            onSave = { newApiKey, newModel ->
+                scope.launch {
+                    GeminiPreferences.saveSettings(
+                        context = context,
+                        apiKey = newApiKey.trim(),
+                        modelName = newModel.ifBlank { DEFAULT_GEMINI_MODEL }
+                    )
+                    showSettingsDialog = false
+                }
             }
         )
     }
@@ -384,24 +399,39 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
 
                         scope.launch {
                             try {
-                                if (apiKey.isBlank()) {
-                                    messages.add(ChatMessage("Por favor, insira sua chave de API do Gemini nas configurações.", isFromAssistant = true))
+                                val trimmedApiKey = settings.apiKey.trim()
+                                if (trimmedApiKey.isBlank()) {
+                                    messages.add(
+                                        ChatMessage(
+                                            "Por favor, insira sua chave de API do Gemini nas configurações.",
+                                            isFromAssistant = true
+                                        )
+                                    )
                                     isLoading = false
                                     return@launch
                                 }
 
-                                val generativeModel = GenerativeModel(
-                                    modelName = "gemini-flash-latest",
-                                    apiKey = apiKey
+                                val modelName = resolvedModelName
+                                val assistantReply = GeminiModelService.generateContent(
+                                    apiKey = trimmedApiKey,
+                                    modelName = modelName,
+                                    userMessage = userMessage
                                 )
 
-                                val response = generativeModel.generateContent(userMessage)
-
-                                response.text?.let {
-                                    messages.add(ChatMessage(it, isFromAssistant = true))
-                                }
+                                messages.add(ChatMessage(assistantReply, isFromAssistant = true))
                             } catch (e: Exception) {
-                                messages.add(ChatMessage("Ocorreu um erro ao chamar a API: ${e.message}", isFromAssistant = true))
+                                val errorMessage = e.message ?: "Erro desconhecido"
+                                val suggestion = if (errorMessage.contains("not found", ignoreCase = true)) {
+                                    " Verifique o nome do modelo nas configurações ou liste os modelos liberados para sua chave."
+                                } else {
+                                    ""
+                                }
+                                messages.add(
+                                    ChatMessage(
+                                        "Ocorreu um erro ao chamar a API: $errorMessage$suggestion",
+                                        isFromAssistant = true
+                                    )
+                                )
                             } finally {
                                 isLoading = false
                             }
@@ -504,14 +534,21 @@ private fun ChatInputBar(
 @Composable
 private fun SettingsDialog(
     currentApiKey: String,
+    currentModelName: String,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String, String) -> Unit
 ) {
     var tempApiKey by remember { mutableStateOf(currentApiKey) }
+    var tempModel by remember { mutableStateOf(currentModelName) }
+    var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var listErrorMessage by remember { mutableStateOf<String?>(null) }
+    var isListingModels by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     Dialog(onDismissRequest = onDismiss) {
         Card(shape = RoundedCornerShape(20.dp)) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text("Configurar API Key", style = MaterialTheme.typography.headlineSmall)
+                Text("Configurar acesso ao Gemini", style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = tempApiKey,
@@ -519,7 +556,79 @@ private fun SettingsDialog(
                     label = { Text("Gemini API Key") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = tempModel,
+                    onValueChange = { tempModel = it },
+                    label = { Text("Nome do modelo") },
+                    supportingText = { Text("Ex.: gemini-1.5-flash-latest") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        if (tempApiKey.isBlank()) {
+                            listErrorMessage = "Informe a API Key antes de listar os modelos."
+                            return@Button
+                        }
+                        isListingModels = true
+                        listErrorMessage = null
+                        scope.launch {
+                            runCatching { GeminiModelService.fetchAvailableModels(tempApiKey.trim()) }
+                                .onSuccess { models ->
+                                    availableModels = models
+                                    if (models.isEmpty()) {
+                                        listErrorMessage = "Nenhum modelo retornado. Verifique no Google AI Studio se sua chave tem acesso liberado."
+                                    }
+                                }
+                                .onFailure { throwable ->
+                                    listErrorMessage = throwable.message ?: "Falha ao listar modelos para esta chave."
+                                }
+                            isListingModels = false
+                        }
+                    },
+                    enabled = !isListingModels
+                ) {
+                    if (isListingModels) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(12.dp))
+                    }
+                    Text("Listar modelos disponíveis")
+                }
+                listErrorMessage?.let { message ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                if (availableModels.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text("Modelos liberados para esta chave:", style = MaterialTheme.typography.labelLarge)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        availableModels.forEach { model ->
+                            FilterChip(
+                                selected = tempModel == model,
+                                onClick = { tempModel = model },
+                                label = { Text(model) }
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(24.dp))
+                Text(
+                    "A lista acima reflete o resultado do endpoint ListModels para a sua chave. Escolha um dos nomes retornados ou informe o modelo manualmente.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -529,7 +638,7 @@ private fun SettingsDialog(
                         Text("Cancelar")
                     }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onSave(tempApiKey) }) {
+                    Button(onClick = { onSave(tempApiKey.trim(), tempModel.trim().ifBlank { DEFAULT_GEMINI_MODEL }) }) {
                         Text("Salvar")
                     }
                 }
