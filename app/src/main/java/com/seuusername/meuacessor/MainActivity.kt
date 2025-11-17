@@ -51,7 +51,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.ai.client.generativeai.GenerativeModel
 import com.seuusername.meuacessor.data.GeminiModelService
 import com.seuusername.meuacessor.ui.theme.*
 import kotlinx.coroutines.launch
@@ -399,16 +398,13 @@ private fun ChatScreen(onMenuClick: () -> Unit) {
                                 }
 
                                 val modelName = selectedModel.ifBlank { DEFAULT_GEMINI_MODEL }
-                                val generativeModel = GenerativeModel(
+                                val assistantReply = GeminiModelService.generateContent(
+                                    apiKey = apiKey.trim(),
                                     modelName = modelName,
-                                    apiKey = apiKey
+                                    userMessage = userMessage
                                 )
 
-                                val response = generativeModel.generateContent(userMessage)
-
-                                response.text?.let {
-                                    messages.add(ChatMessage(it, isFromAssistant = true))
-                                }
+                                messages.add(ChatMessage(assistantReply, isFromAssistant = true))
                             } catch (e: Exception) {
                                 val errorMessage = e.message ?: "Erro desconhecido"
                                 val suggestion = if (errorMessage.contains("not found", ignoreCase = true)) {
