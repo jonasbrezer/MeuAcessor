@@ -828,6 +828,25 @@ private fun FinanceInsightsCard() {
     }
 }
 
+data class FinanceSummaryCardData(val title: String, val value: String, val subtitle: String, val highlightColor: Color)
+
+data class FinanceCategory(val name: String, val amount: Double, val color: Color)
+
+data class FinanceQuickStat(val title: String, val value: String, val backgroundColor: Color, val contentColor: Color)
+
+data class FinanceTimelineDay(val label: String, val entries: List<FinanceMovement>)
+
+data class FinanceMovement(
+    val title: String,
+    val description: String,
+    val amount: Double,
+    val type: FinanceMovementType,
+    val status: String,
+    val indicatorColor: Color
+)
+
+enum class FinanceMovementType { Income, Expense }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FinanceTimelineCard(
