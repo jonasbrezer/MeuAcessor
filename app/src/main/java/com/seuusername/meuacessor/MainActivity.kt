@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -354,10 +355,10 @@ fun TaskItem(task: TaskItemData, onClick: () -> Unit) {
 fun FinancesScreen(onBackClick: () -> Unit) {
     val summaryCards = remember {
         listOf(
-            FinanceSummaryCardData("Saldo Atual", "R$ 19,48", "Disponível", AccentGreen),
-            FinanceSummaryCardData("Guardado", "R$ 0,00", "Caixinhas", AccentBlue.copy(alpha = 0.8f)),
+            FinanceSummaryCardData("Saldo Atual", "R$ 19.482,91", "Disponível", AccentGreen),
+            FinanceSummaryCardData("Guardado", "R$ 4.800,00", "Caixinhas", AccentBlue.copy(alpha = 0.8f)),
             FinanceSummaryCardData("Despesas (Mês)", "R$ 2.967,09", "Planejado", AccentOrange.copy(alpha = 0.9f)),
-            FinanceSummaryCardData("Pendentes", "R$ 0,00", "Próximos 7 dias", AccentPurple)
+            FinanceSummaryCardData("Pendentes", "R$ 726,00", "Próximos 7 dias", AccentPurple)
         )
     }
 
@@ -409,6 +410,47 @@ fun FinancesScreen(onBackClick: () -> Unit) {
         )
     }
 
+    val heroInfo = remember {
+        FinanceHeroInfo(
+            currentMonth = "Novembro 2025",
+            userName = "Lucas",
+            balance = "R$ 19.482,91",
+            monthlyVariation = "+12% vs mês passado",
+            lastSync = "Atualizado há 2 minutos"
+        )
+    }
+
+    val actions = remember {
+        listOf(
+            FinanceQuickAction(Icons.Rounded.Insights, "Análise IA"),
+            FinanceQuickAction(Icons.Rounded.Savings, "Caixinhas"),
+            FinanceQuickAction(Icons.Rounded.Wallet, "Investir"),
+            FinanceQuickAction(Icons.Rounded.AttachMoney, "Ganhos"),
+        )
+    }
+
+    val financeGoals = remember {
+        listOf(
+            FinanceGoal("Reserva de Emergência", "R$ 20.000", 0.35f, "R$ 7.000 acumulados", AccentBlue.copy(alpha = 0.2f), AccentBlue),
+            FinanceGoal("Viagem família 2026", "R$ 8.500", 0.58f, "R$ 4.930 acumulados", AccentPurple.copy(alpha = 0.2f), AccentPurple)
+        )
+    }
+
+    val financeAlerts = remember {
+        listOf(
+            FinanceAlert("Energia acima da média", "Consumo 14% maior nos últimos 30 dias", AccentOrange, Icons.Rounded.EnergySavingsLeaf),
+            FinanceAlert("Receita recorrente sem receber", "JOB fixo não identificado desde 15/10", AccentRed, Icons.Rounded.Warning)
+        )
+    }
+
+    val upcomingBills = remember {
+        listOf(
+            FinanceUpcomingPayment("Cartão XP", "Vence em 3 dias", 725.90, AccentBlue),
+            FinanceUpcomingPayment("Escola Helena", "12/11 - parcela 09", 410.00, AccentPurple),
+            FinanceUpcomingPayment("Plano de saúde", "15/11", 298.90, AccentGreen)
+        )
+    }
+
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale("pt", "BR")) }
 
     Scaffold(
@@ -432,6 +474,8 @@ fun FinancesScreen(onBackClick: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item { FinanceHeroCard(heroInfo) }
+            item { FinanceQuickActions(actions = actions) }
             item { FinanceSummaryRow(summaryCards) }
             item {
                 FinanceAnalysisSection(
@@ -444,6 +488,9 @@ fun FinancesScreen(onBackClick: () -> Unit) {
                 )
             }
             item { FinanceCategoryList(categories = categories, total = totalExpenses, currencyFormatter = currencyFormatter) }
+            item { FinanceGoalsSection(goals = financeGoals) }
+            item { FinanceAlertsSection(alerts = financeAlerts) }
+            item { FinanceUpcomingPaymentsSection(upcomingBills = upcomingBills, currencyFormatter = currencyFormatter) }
             item { FinanceInsightsCard() }
             item {
                 FinanceTimelineCard(
@@ -470,6 +517,145 @@ private fun FinanceSummaryRow(cards: List<FinanceSummaryCardData>) {
                 }
                 if (rowCards.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceHeroCard(info: FinanceHeroInfo) {
+    val gradient = remember {
+        Brush.linearGradient(
+            listOf(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.95f),
+                MaterialTheme.colorScheme.secondary
+            )
+        )
+    }
+
+    Surface(shape = RoundedCornerShape(28.dp), color = Color.Transparent, tonalElevation = 0.dp) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(gradient, RoundedCornerShape(28.dp))
+                .padding(24.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Olá, ${'$'}{info.userName}", color = Color.White.copy(alpha = 0.8f))
+                        Text(info.currentMonth, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    }
+                    Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.2f)) {
+                        Text("Sincronizar", color = Color.White, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Saldo consolidado", color = Color.White.copy(alpha = 0.8f))
+                    Text(info.balance, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 34.sp)
+                    Text(info.monthlyVariation, color = Color.White.copy(alpha = 0.9f))
+                }
+                Divider(color = Color.White.copy(alpha = 0.2f))
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(info.lastSync, color = Color.White.copy(alpha = 0.8f))
+                    Icon(imageVector = Icons.Rounded.CheckCircle, contentDescription = null, tint = Color.White.copy(alpha = 0.9f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceQuickActions(actions: List<FinanceQuickAction>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        actions.forEach { action ->
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
+                        Icon(action.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(10.dp))
+                    }
+                    Text(action.label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceGoalsSection(goals: List<FinanceGoal>) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Metas", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        goals.forEach { goal ->
+            Surface(shape = RoundedCornerShape(20.dp), color = goal.backgroundColor) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Column {
+                            Text(goal.title, fontWeight = FontWeight.Bold)
+                            Text(goal.target, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(String.format("%d%%", (goal.progress * 100).toInt()), fontWeight = FontWeight.Bold, color = goal.accentColor)
+                    }
+                    LinearProgressIndicator(progress = goal.progress, color = goal.accentColor, trackColor = goal.accentColor.copy(alpha = 0.2f), modifier = Modifier.fillMaxWidth())
+                    Text(goal.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceAlertsSection(alerts: List<FinanceAlert>) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Alertas inteligentes", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        alerts.forEach { alert ->
+            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(shape = CircleShape, color = alert.tint.copy(alpha = 0.15f)) {
+                        Icon(alert.icon, contentDescription = null, tint = alert.tint, modifier = Modifier.padding(10.dp))
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(alert.title, fontWeight = FontWeight.SemiBold)
+                        Text(alert.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinanceUpcomingPaymentsSection(upcomingBills: List<FinanceUpcomingPayment>, currencyFormatter: NumberFormat) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Próximos pagamentos", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        upcomingBills.forEach { bill ->
+            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(bill.tint))
+                        Column {
+                            Text(bill.title, fontWeight = FontWeight.SemiBold)
+                            Text(bill.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                        }
+                    }
+                    Text(currencyFormatter.format(bill.amount), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -642,6 +828,25 @@ private fun FinanceInsightsCard() {
     }
 }
 
+data class FinanceSummaryCardData(val title: String, val value: String, val subtitle: String, val highlightColor: Color)
+
+data class FinanceCategory(val name: String, val amount: Double, val color: Color)
+
+data class FinanceQuickStat(val title: String, val value: String, val backgroundColor: Color, val contentColor: Color)
+
+data class FinanceTimelineDay(val label: String, val entries: List<FinanceMovement>)
+
+data class FinanceMovement(
+    val title: String,
+    val description: String,
+    val amount: Double,
+    val type: FinanceMovementType,
+    val status: String,
+    val indicatorColor: Color
+)
+
+enum class FinanceMovementType { Income, Expense }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FinanceTimelineCard(
@@ -773,6 +978,39 @@ data class FinanceMovement(
     val type: FinanceMovementType,
     val status: String,
     val indicatorColor: Color
+)
+
+data class FinanceHeroInfo(
+    val currentMonth: String,
+    val userName: String,
+    val balance: String,
+    val monthlyVariation: String,
+    val lastSync: String
+)
+
+data class FinanceQuickAction(val icon: ImageVector, val label: String)
+
+data class FinanceGoal(
+    val title: String,
+    val target: String,
+    val progress: Float,
+    val subtitle: String,
+    val backgroundColor: Color,
+    val accentColor: Color
+)
+
+data class FinanceAlert(
+    val title: String,
+    val description: String,
+    val tint: Color,
+    val icon: ImageVector
+)
+
+data class FinanceUpcomingPayment(
+    val title: String,
+    val subtitle: String,
+    val amount: Double,
+    val tint: Color
 )
 
 enum class FinanceMovementType { Income, Expense }
